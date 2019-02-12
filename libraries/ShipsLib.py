@@ -79,26 +79,49 @@ class ship:
             # if we do not find the shot, add it to the list
             self.Shot+=[new_shot]  # for now don't look for common shot
     
-    def fire_cannon(self,index,coord):
+    def fire_cannon(self,index,x,y):
+        coord = np.array([[x],[y]])
         coordship = np.dot(transform(self.theta),coord-self.coords)
-        self.Cannons[index].fire(coordship)
+        hit_coords = self.Cannons[index].fire(coordship)
+        hit_coords = np.dot(transform(-self.theta),hit_coords)+self.coords
+        return hit_coords
+        
+    def master_move(self,x_new,y_new):
+        # override ship location
+        self.coords = np.array([[x_new],[y_new]])
         
     def move(self,x_new,y_new):
-        self.coords = np.array([x_new,y_new])
+        c_new = np.array([[x_new],[y_new]])
+        if np.sqrt(np.sum((c_new-self.coords)**2)) <= self.move_dist:
+            self.coords = c_new.copy()
+        else:
+            # try to move toward the requested location
+            n_move = c_new-self.coords
+            n_move = n_move/np.sqrt(np.sum(n_move**2))*self.move_dist
+            self.coords=n_move+self.coords
+            
+        
     
-    def update():
+    def update(self):
         # update everything
         self.update_length()
         self.update_mass()
+        self.update_move()
+        
+    def update_move(self):
+        self.move_dist = self.propel*1.0/self.mass
     
     def update_length(self):
         length = []
         mass_len = []
+        propel = 0
         for seg in self.Segments:
             length+=[seg.length]
             mass_len+=[seg.mass*seg.length]
+            propel+=seg.mast
         self.center_of_mass = np.interp(0.5,np.array(mass_len)/sum(mass_len),np.array(length))
         self.length = sum(length)
+        self.propel=propel
     
     def update_mass(self):
         cannon_mass = 0
@@ -149,25 +172,28 @@ class cannon:
             t_dist = np.sqrt(np.sum(coord**2))
         
             # shot exit velocity
-            v0 =self.v0n/shot.mass
+            v0 =self.v0n/self.Shot.mass
         
-            # round uncertainty space
-            dtheta0 = np.random.rand()*2*np.pi
-            dthetaR = np.random.randn*self.Accuracy
-            
+##            # round uncertainty space
+#            dtheta0 = np.random.rand()*2*np.pi
+#            dthetaR = np.random.randn()*self.Accuracy
+#            
 #            dthetaX = dthetaR*np.cos(dtheta0)
 #            dthetaZ = dthetaR*np.sin(dtheta0)
         
             # square uncertainty space
-    #        dthetaX = np.random.randn()*self.Accuracy
-    #        dthetaY = np.random.randn()*self.Accuracy
-        
-#            thetaX = np.arctan(t_coords[0]/t_dist)+dthetaX
-#            thetaZ = 0.5*np.arcsin(t_dist*g/v0**2)+dthetaY
+            dthetaX = np.random.randn()*self.Accuracy*np.pi/180
+            dthetaZ = np.random.randn()*self.Accuracy*np.pi/180
+            
+            thetaX = np.arctan2(coord[1,0],coord[0,0])+dthetaX
+            thetaZ = 0.5*np.arcsin(t_dist*g/v0**2)+dthetaZ
+            if np.isnan(thetaZ):
+                thetaZ = np.pi/4
             
             # landing point in cannon coordinate frame
             x_shot = np.cos(thetaX)*v0**2/g*np.sin(2*thetaZ)
             y_shot = np.sin(thetaX)*v0**2/g*np.sin(2*thetaZ)
+
             coord_out = np.dot(transform(-self.theta),np.array([[x_shot],[y_shot]]))+self.coords
             return coord_out
 
