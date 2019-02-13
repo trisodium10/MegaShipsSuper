@@ -6,6 +6,7 @@ Class definition for ships game.
 Ships -
 Cannons - 
 shot - amunition to fire out of cannons
+segments - ship segments to build ships out of
 """
 
 import numpy as np
@@ -21,6 +22,17 @@ default_shot = {'mass':1,'name':'default','damage':1}
 heavy_shot = {'mass':3,'name':'heavy','damange':2}
 
 class ship:
+    """
+    A ship instance with a position on the board coords = (x,y)
+    and orientation theta
+    A ship consists of Segments and has cannons
+    If a segment on a ship runs out of hit points, the ship sinks
+    The ship is loaded with shot which is fires in its cannons.
+    
+    A ship has a move range defined by its propel to mass ratio.  The propel
+    property is increased by having more and better masts.  The mass is
+    increased by having more segments, cannons and ammunition on the ship.
+    """
     def __init__(self,x,y,width=1,theta=0):
         """
         x,y location on board
@@ -49,6 +61,16 @@ class ship:
         self.move_dist = 0 #self.propel/self.mass
         
         self.theta = theta # the ship's orientation on the map
+        
+    def __repr__(self):
+        retstr = 'ship class\n'
+        retstr+='position (%.2f,%.2f)\n'%(self.coords[0,0],self.coords[1,0])
+        retstr+='%d segments\n'%len(self.Segments)
+        retstr+='|' 
+        for seg in self.Segments:
+            retstr+=' %d |'%seg.hp
+        return retstr
+
     
     def push_segment(self,new_seg):
         # add a segment to the end of the ship
@@ -143,7 +165,7 @@ class cannon:
     def __init__(self,z=0,w=0,Power=1,MaxRange=10,Accuracy=1,theta=0,position=(0,0),mass=1):
 
         self.mass = mass   # cannon mass
-        self.coords = np.array([[z],[w]])  # psoition of cannon on ship
+        self.coords = np.array([[z],[w]])  # position of cannon on ship
         self.Power = Power # cannon power
         self.MaxRange = MaxRange  # range degredation constant
         self.v0n = np.sqrt(self.MaxRange*g)  # nomial exit velocity (standard shot)
@@ -154,6 +176,16 @@ class cannon:
         
         self.theta=0  # the cannon's orientation on the ship
         self.position=0 # the cannon's [x,y] position on the ship
+        
+    def __repr__(self):
+        retstr = 'cannon class\n'
+        retstr = 'ship position (%.2f,%.2f)\n'%(self.coords[0,0],self.coords[1,0])
+        retstr+= 'exit velocity %.2f\n'%self.v0n
+        retstr+= 'accuracy %.2f\n'%self.Accuracy
+        retstr+= 'loaded: %r'%self.Loaded
+        return retstr
+        
+        
     
     def load(self,shot):
         self.Loaded = True
@@ -198,11 +230,24 @@ class cannon:
             return coord_out
 
 class shot:
+    """
+    class definition for cannon ordinance or shot
+    the count reflects how much is in the store
+    damage is the damage inflicted if it hits its target
+    mass is how much the shot contributes to the ship's mass
+    name is used to group the types
+    """
     def __init__ (self,mass,damage,name,count=10):
         self.damage = damage
         self.count = count
         self.name = name
         self.mass = mass
+    
+    def __repr__(self):
+        retstr = 'shot class: '+self.name+'\n'
+        retstr+= 'count %d'%self.count
+        return retstr
+        
     def add_count(self,count):
         # increase the amount of stored shot
         self.count+=count
@@ -212,9 +257,9 @@ class shot:
         self.count-=1
         return shot(self.mass,self.damage,self.name,count=1)
         
-def default_shot(count=10):
+def standard_shot(count=10):
     # generate a store of default shot
-    new_shot=shot(1,1,'default',count=count)
+    new_shot=shot(1,1,'standard',count=count)
     return new_shot
      
 def heavy_shot(count=3):
@@ -224,6 +269,14 @@ def heavy_shot(count=3):
         
 
 class segment:
+    """
+    Class definition for a ship segment
+    Each segment has a certain number of hitpoints (hp),
+    a position along the ship's length (z)
+    a mass
+    and a possible mast with value corresponding to the amount it contributes
+        to the ship's propel property
+    """
     def __init__(self,z,hp=3,length=1,mass=10,mast=10):
         self.hp = hp  # hit points
         self.z = z  # coordinate location along the ship (from the front)
