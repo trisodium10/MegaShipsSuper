@@ -24,7 +24,7 @@ c1 = cannon()  # define a default cannon
 
 s1.add_cannon(c1)  # load the cannon onto the ship
 
-s1.add_shot(default_shot(count=10))
+s1.add_shot(standard_shot(count=10))
 
 s1.update()
 
