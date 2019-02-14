@@ -7,8 +7,12 @@ Created on Tue Feb 12 18:32:44 2019
 
 import pyglet
 
+from ShipsLib import *
+
 
 import numpy as np
+
+
 
 
 window = pyglet.window.Window()
@@ -40,29 +44,40 @@ window = pyglet.window.Window()
 # draw a triangle with a vertex list and different color verticies    
 from pyglet.window import mouse
 
-vertex_list = pyglet.graphics.vertex_list(3,
-    ('v2i', (10, 10, 10, 40 , 20, 20)),
-    ('c3B', (0, 0, 255, 0, 255, 0, 0, 255, 0))
+pyglet.resource.path = ['../resources']
+pyglet.resource.reindex()
+
+p1_batch = pyglet.graphics.Batch()  # player 1 pieces
+
+ship_len = 3
+s1 = ship(400,300) # define a default ship
+for ai in range(ship_len):
+    s1.push_segment(segment(0))
+
+s1.add_to_board(batch=p1_batch)
+
+
+win_size = window.get_size()
+edge_wid = 10
+vertex_list = pyglet.graphics.vertex_list(4,
+    ('v2i', (edge_wid, edge_wid, edge_wid, win_size[1]-edge_wid , win_size[0]-edge_wid, win_size[1]-edge_wid, win_size[0]-edge_wid, edge_wid)),
+    ('c3B', (0, 0, 155, 0, 0, 175, 0, 0, 205, 0, 0, 255))
     
 )
 
-vertex_index = 0
-l_vertex = 2
-n_vertex = 3
 
 @window.event
 def on_draw():
     window.clear()
-    vertex_list.draw(pyglet.gl.GL_TRIANGLES)
+    vertex_list.draw(pyglet.gl.GL_QUADS)
+    p1_batch.draw()
     
 @window.event
-def on_mouse_press(x, y, button, modifiers,vertex_index):
+def on_mouse_press(x, y, button, modifiers):
     if button == mouse.LEFT:
-        vertex_list.vertices[vertex_index*l_vertex:(1+vertex_index)*l_vertex-1] = [x,y]
+        pass
     elif button == mouse.RIGHT:
-        vertex_index+=1
-        vertex_index = np.mod(vertex_index,n_vertex)
-    return vertex_index
+        pass
         
     
 pyglet.app.run()

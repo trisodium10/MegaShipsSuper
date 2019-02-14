@@ -10,6 +10,7 @@ segments - ship segments to build ships out of
 """
 
 import numpy as np
+import pyglet
 
 g = 9.81  # acceleration of gravity
 
@@ -62,6 +63,8 @@ class ship:
         
         self.theta = theta # the ship's orientation on the map
         
+        self.sprite = None  # pyglet sprite for the ship
+        
     def __repr__(self):
         retstr = 'ship class\n'
         retstr+='position (%.2f,%.2f)\n'%(self.coords[0,0],self.coords[1,0])
@@ -70,7 +73,15 @@ class ship:
         for seg in self.Segments:
             retstr+=' %d |'%seg.hp
         return retstr
-
+    
+    def add_to_board(self,batch=None):
+        ship_image = pyglet.resource.image('ship0.png')
+        center_image(ship_image)
+        self.sprite = pyglet.sprite.Sprite(ship_image, 
+                             x=self.coords[0,0], y=self.coords[1,0],
+                             batch=batch)
+        self.sprite.rotation=self.theta
+        self.sprite.scale = 0.1
     
     def push_segment(self,new_seg):
         # add a segment to the end of the ship
@@ -111,9 +122,17 @@ class ship:
     def master_move(self,x_new,y_new):
         # override ship location
         self.coords = np.array([[x_new],[y_new]])
+        self.sprite.position = tuple(self.coords.flatten())
+        
+    def set_angle(self,angle):
+        # set the angle of the ship in degrees
+        self.theta = angle
+        self.sprite.rotation = self.theta
         
     def move(self,x_new,y_new):
         c_new = np.array([[x_new],[y_new]])
+        self.theta = np.arctan2(c_new[1,0]-self.coords[1,0],c_new[0,0]-self.coords[0,0])*180/np.pi
+        self.sprite.rotation = self.theta
         if np.sqrt(np.sum((c_new-self.coords)**2)) <= self.move_dist:
             self.coords = c_new.copy()
         else:
@@ -121,6 +140,8 @@ class ship:
             n_move = c_new-self.coords
             n_move = n_move/np.sqrt(np.sum(n_move**2))*self.move_dist
             self.coords=n_move+self.coords
+        self.sprite.position = tuple(self.coords.flatten())
+        
             
         
     
@@ -298,3 +319,8 @@ def transform(theta):
     system defined by the new object orientation theta
     """
     return np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
+    
+def center_image(image):
+    """Sets an image's anchor point to its center"""
+    image.anchor_x = image.width // 2
+    image.anchor_y = image.height // 2
