@@ -61,7 +61,7 @@ win_size = window.get_size()
 edge_wid = 10
 vertex_list = pyglet.graphics.vertex_list(4,
     ('v2i', (edge_wid, edge_wid, edge_wid, win_size[1]-edge_wid , win_size[0]-edge_wid, win_size[1]-edge_wid, win_size[0]-edge_wid, edge_wid)),
-    ('c3B', (0, 0, 155, 0, 0, 175, 0, 0, 205, 0, 0, 255))
+    ('c3B', (10, 10, 105, 80, 80, 225, 40, 40, 225, 0, 0, 175))
     
 )
 

@@ -75,11 +75,12 @@ class ship:
         return retstr
     
     def add_to_board(self,batch=None):
-        ship_image = pyglet.resource.image('ship0.png')
+        ship_image = pyglet.resource.image('ship1.png')
         center_image(ship_image)
         self.sprite = pyglet.sprite.Sprite(ship_image, 
                              x=self.coords[0,0], y=self.coords[1,0],
                              batch=batch)
+        self.opacity = 0
         self.sprite.rotation=self.theta
         self.sprite.scale = 0.1
     
