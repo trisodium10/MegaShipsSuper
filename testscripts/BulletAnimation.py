@@ -12,6 +12,8 @@ import numpy as np
 
 g0 = 9.81
 
+edge_wid = 3
+
 def matrix_rot3d(theta,phi):
     return np.dot(np.array([[np.cos(theta),np.sin(theta),0],\
                             [-np.sin(theta),np.cos(theta),0],\
@@ -90,6 +92,33 @@ class projectile:
             if not self.del_obj is None:
                 # delete this object
                 self.del_obj+=[self]
+
+class game:
+    def __init__(self,board_x,board_y):
+        self.board_x = board_x
+        self.board_y = board_y
+        self.objects = []
+        self.new_obj = []
+        self.del_obj = []
+        self.splash_list = []
+        window = pyglet.window.Window()
+        win_size = window.get_size()
+
+        
+        bg_vertex_list = pyglet.graphics.vertex_list(4,
+            ('v2i', (edge_wid, edge_wid, edge_wid, win_size[1]-edge_wid , win_size[0]-edge_wid, win_size[1]-edge_wid, win_size[0]-edge_wid, edge_wid)),
+            ('c3B', (80, 80, 235, 110, 110, 225, 140, 140, 225, 110, 110, 175))    
+        )
+        
+    
+    def update(self,dt):
+        for obj in del_obj:
+            del obj
+        
+        for obj in objects:
+            obj.update(dt)
+            
+#        for obj in new_obj:
         
 
 class bullet:
@@ -167,7 +196,8 @@ bg_vertex_list = pyglet.graphics.vertex_list(4,
     ('c3B', (80, 80, 235, 110, 110, 225, 140, 140, 225, 110, 110, 175))    
 )
 
-del_obj_list = []      
+del_obj_list = []   
+create_obj_list = []   
 
 bullet_batch = pyglet.graphics.Batch() 
 splash_batch = pyglet.graphics.Batch()
@@ -197,16 +227,18 @@ b1 = projectile(bullet_pos,bullet_vel,batch=bullet_batch,image='bullet0.png',
 splash_vel0 = 30
 splash_velsig = splash_vel0 * 3.0/5
 splash_pos = np.array([100,100,0])
+#splash_list = []
+#for ai in range(10):
+#    splash_vel = ((np.random.randn()*splash_velsig+splash_vel0)*\
+#            np.dot(matrix_rot3d(np.random.rand()*2*np.pi,np.random.randn()*np.pi/50),np.array([[0],[0],[1]]))).flatten()
+#    splash_list+=[projectile(splash_pos,splash_vel,batch=splash_batch,
+#                image='splash2.png',
+#                shadow_image = 'splash2_shadow.png',
+#                objects_group=objects,
+#                shadows_group=shadows,proj=proj3D,del_obj=del_obj_list)]
 splash_list = []
-for ai in range(10):
-    splash_vel = ((np.random.randn()*splash_velsig+splash_vel0)*\
-            np.dot(matrix_rot3d(np.random.rand()*2*np.pi,np.random.randn()*np.pi/50),np.array([[0],[0],[1]]))).flatten()
-    splash_list+=[projectile(splash_pos,splash_vel,batch=splash_batch,
-                image='splash2.png',
-                shadow_image = 'splash2_shadow.png',
-                objects_group=objects,
-                shadows_group=shadows,proj=proj3D,del_obj=del_obj_list)]
-    
+#splash_list = make_splash(splash_pos[0],splash_pos[1],splash_batch,objects,shadows,proj3D=proj3D,num=10,del_obj_list=del_obj_list,create_obj_list=create_obj_list)  
+
 @window.event
 def on_draw():
     window.clear()
@@ -222,10 +254,13 @@ def update(dt):
         del del_obj_list[iobj]        
         
     
-    b1.update(dt)
+    if b1.update(dt):
+        splash_list=make_splash(b1.pos[0],b1.pos[1],splash_batch,objects,shadows,proj3D=proj3D,num=10,del_obj_list=del_obj_list,create_obj_list=create_obj_list)  
 
+    
     for splsh in splash_list:
         splsh.update(dt)
+
     
 pyglet.clock.schedule_interval(update, 1/60.)
 pyglet.app.run()
