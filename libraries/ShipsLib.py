@@ -13,6 +13,7 @@ import numpy as np
 import pyglet
 
 g = 9.81  # acceleration of gravity
+move_speed = 10
 
 Mseg = 10
 
@@ -82,7 +83,7 @@ class ship:
                              batch=batch)
         self.opacity = 0
         self.sprite.rotation=self.theta
-        self.sprite.scale = 0.1
+        self.sprite.scale = 0.05
     
     def push_segment(self,new_seg):
         # add a segment to the end of the ship
@@ -133,7 +134,12 @@ class ship:
     def move(self,x_new,y_new):
         c_new = np.array([[x_new],[y_new]])
         self.theta = np.arctan2(c_new[1,0]-self.coords[1,0],c_new[0,0]-self.coords[0,0])*180/np.pi
-        self.sprite.rotation = self.theta
+        self.sprite.rotation = self.theta+90
+#        dtheta = np.arctan2(c_new[1,0]-self.coords[1,0],c_new[0,0]-self.coords[0,0])*180/np.pi-self.theta
+#        self.theta += dtheta
+#        self.sprite.rotation = dtheta
+#        print(self.theta)
+#        print(dtheta)
         if np.sqrt(np.sum((c_new-self.coords)**2)) <= self.move_dist:
             self.coords = c_new.copy()
         else:
@@ -141,13 +147,17 @@ class ship:
             n_move = c_new-self.coords
             n_move = n_move/np.sqrt(np.sum(n_move**2))*self.move_dist
             self.coords=n_move+self.coords
-        self.sprite.position = tuple(self.coords.flatten())
+#        self.sprite.position = tuple(self.coords.flatten())
         
             
-        
+    def update(self,dt):
+        # update for animation and motion
+        if any(self.sprite.position != self.coords.flatten()):
+            self.sprite.position = (move_speed*dt*(self.coords[0,0]-self.sprite.position[0])+self.sprite.position[0],\
+                move_speed*dt*(self.coords[1,0]-self.sprite.position[1])+self.sprite.position[1])
     
-    def update(self):
-        # update everything
+    def update_ship(self):
+        # update ship attributes
         self.update_length()
         self.update_mass()
         self.update_move()
@@ -299,7 +309,7 @@ class segment:
     and a possible mast with value corresponding to the amount it contributes
         to the ship's propel property
     """
-    def __init__(self,z,hp=3,length=1,mass=10,mast=10):
+    def __init__(self,z,hp=3,length=1,mass=10,mast=1000):
         self.hp = hp  # hit points
         self.z = z  # coordinate location along the ship (from the front)
         self.length = length  # length of segment
