@@ -16,7 +16,7 @@ edge_wid = 3
 splash_vel0 = 30
 splash_velsig = splash_vel0 * 3.0/5
 
-proj3D = matrix_rot3d(0,np.pi/18.0)
+
 
 def matrix_rot3d(theta,phi):
     return np.dot(np.array([[np.cos(theta),np.sin(theta),0],\
@@ -71,13 +71,13 @@ class projectile:
         sprite_pos = np.dot(self.proj,self.pos[np.newaxis].T)[:2,0]
         self.sprite = pyglet.sprite.Sprite(sprite_image, 
                              x=sprite_pos[0], y=sprite_pos[1],
-                             batch=batch,group=objects)
+                             batch=batch,group=objects_group)
         if not shadow_image is None:
             shadow_image_obj = pyglet.resource.image(shadow_image)
             center_image(shadow_image_obj)
             self.shadow = pyglet.sprite.Sprite(shadow_image_obj, 
                              x=self.pos[0], y=self.pos[1],
-                             batch=batch,group=shadows)
+                             batch=batch,group=shadows_group)
         else:
             self.shadow=None
     def update(self,dt):
@@ -99,8 +99,6 @@ class projectile:
 
 class game:
     def __init__(self,proj3D):
-        self.board_x = board_x
-        self.board_y = board_y
         self.bullets = []
         self.splashes = []
         self.ships = []
@@ -108,7 +106,7 @@ class game:
         self.del_obj = []
         self.splash_list = []
         self.window = pyglet.window.Window()
-        self.win_size = window.get_size()
+        self.win_size = self.window.get_size()
         
         self.bullet_batch = pyglet.graphics.Batch() 
         self.splash_batch = pyglet.graphics.Batch()
@@ -123,7 +121,9 @@ class game:
 
         
         self.bg_vertex_list = pyglet.graphics.vertex_list(4,
-            ('v2i', (edge_wid, edge_wid, edge_wid, win_size[1]-edge_wid , win_size[0]-edge_wid, win_size[1]-edge_wid, win_size[0]-edge_wid, edge_wid)),
+            ('v2i', (edge_wid, edge_wid, edge_wid, self.win_size[1]-edge_wid , 
+                     self.win_size[0]-edge_wid, self.win_size[1]-edge_wid, 
+                     self.win_size[0]-edge_wid, edge_wid)),
             ('c3B', (80, 80, 235, 110, 110, 225, 140, 140, 225, 110, 110, 175))    
         )
         
@@ -134,12 +134,20 @@ class game:
         
         for obj in self.ships:
             obj.update(dt)
+#            print('ship obj')
             
-        for obj in self.bullets:
+        for iobj,obj in enumerate(self.bullets):
             obj.update(dt)
+            if obj.pos[2] < 0:
+                self.bullets.remove(obj)
+                self.make_splash(obj.pos[0],obj.pos[1])
+#            print('bullet obj')
         
         for obj in self.splashes:
             obj.update(dt)
+            if obj.pos[2] < 0:
+                self.splashes.remove(obj)
+#            print('splash obj')
     
     def make_bullet(self,bullet_pos,bullet_vel):
         self.bullets+=[projectile(bullet_pos,bullet_vel,batch=self.bullet_batch,image='bullet0.png',
@@ -148,8 +156,17 @@ class game:
                 shadows_group=self.shadows,proj=self.proj3D)]
             
     def make_splash(self,x,y,num=10):
-        self.splashes+=[make_splash(x,y,self.splash_batch,self.objects,
-                                    self.shadows,proj3D=self.proj3D,num=num)]
+        self.splashes+=make_splash(x,y,self.splash_batch,self.objects,
+                                    self.shadows,proj3D=self.proj3D,num=num)
+    
+    def make_ship(self,x,y,ship_len):
+        self.ships+= [ship(x,y)]
+        for ai in range(ship_len):
+            self.ships[-1].push_segment(segment(0))
+            
+        self.ships[-1].add_cannon(cannon())  # load the cannon onto the ship        
+        self.ships[-1].add_shot(standard_shot(count=10))        
+        self.ships[-1].update_ship()
         
 
 class bullet:
@@ -180,55 +197,32 @@ class bullet:
 #        else:
 #            # delete self
    
-#class splash:
-#    __init__()
-#            self.state += 1
-#            if self.state == 1:
-#                splash_image = pyglet.resource.image('splash1.png')
-#                splash_image.anchor_x = splash_image.width // 2
-#                self.sprite = pyglet.sprite.Sprite(splash_image, 
-#                             x=self.pos[0], y=self.pos[1],
-#                             batch=self.batch)
-#            elif self.state < 11:
-#                self.state += 1
-#                self.sprite.scale_y+=1
-#                if self.state > 10:
-#                    self.sprite.visible = False
-            
-#            self.sprite.visible = False
-            
-            
-#        self.vertexlist.verticies = [
-#                     np.int(self.pos[0]-bullet_wid), np.int(self.pos[1]-bullet_wid),
-#                     np.int(self.pos[0]-bullet_wid), np.int(self.pos[1]+bullet_wid),
-#                     np.int(self.pos[0]+bullet_wid), np.int(self.pos[1]+bullet_wid),
-#                     np.int(self.pos[0]+bullet_wid), np.int(self.pos[1]-bullet_wid)]
-#        print(self.pos)
+
                      
 pyglet.resource.path = ['../resources']
 pyglet.resource.reindex()
 
+proj3D = matrix_rot3d(0,np.pi/18.0)
+
+#bullet_wid = 2
+bullet_pos = np.array([20,50,0])
+bullet_vel = 2*np.array([10,10,40])
 
 
-
-bullet_wid = 2
-bullet_pos = np.array([400,200,1])
-bullet_vel = np.array([10,5,40])
-
-window = pyglet.window.Window()
-win_size = window.get_size()
-edge_wid = 10
-
-bg_vertex_list = pyglet.graphics.vertex_list(4,
-    ('v2i', (edge_wid, edge_wid, edge_wid, win_size[1]-edge_wid , win_size[0]-edge_wid, win_size[1]-edge_wid, win_size[0]-edge_wid, edge_wid)),
-    ('c3B', (80, 80, 235, 110, 110, 225, 140, 140, 225, 110, 110, 175))    
-)
-
-del_obj_list = []   
-create_obj_list = []   
-
-bullet_batch = pyglet.graphics.Batch() 
-splash_batch = pyglet.graphics.Batch()
+#window = pyglet.window.Window()
+#win_size = window.get_size()
+#edge_wid = 10
+#
+#bg_vertex_list = pyglet.graphics.vertex_list(4,
+#    ('v2i', (edge_wid, edge_wid, edge_wid, win_size[1]-edge_wid , win_size[0]-edge_wid, win_size[1]-edge_wid, win_size[0]-edge_wid, edge_wid)),
+#    ('c3B', (80, 80, 235, 110, 110, 225, 140, 140, 225, 110, 110, 175))    
+#)
+#
+#del_obj_list = []   
+#create_obj_list = []   
+#
+#bullet_batch = pyglet.graphics.Batch() 
+#splash_batch = pyglet.graphics.Batch()
 
 #bullet_vertex_list = pyglet.graphics.vertex_list(4,
 #            ('v2i', (bullet_pos[0]-bullet_wid, bullet_pos[1]-bullet_wid,
@@ -244,12 +238,12 @@ splash_batch = pyglet.graphics.Batch()
 #                     bullet_pos[0]+bullet_wid, bullet_pos[1]-bullet_wid)),
 #            ('c3B', (20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20)))
 
-#  Make a bullet
-#b1 = bullet(bullet_pos,bullet_vel,batch=bullet_batch)
-b1 = projectile(bullet_pos,bullet_vel,batch=bullet_batch,image='bullet0.png',
-                shadow_image = 'bullet0_shadow.png',\
-                objects_group=objects,\
-                shadows_group=shadows,proj=proj3D,del_obj=del_obj_list)
+##  Make a bullet
+##b1 = bullet(bullet_pos,bullet_vel,batch=bullet_batch)
+#b1 = projectile(bullet_pos,bullet_vel,batch=bullet_batch,image='bullet0.png',
+#                shadow_image = 'bullet0_shadow.png',\
+#                objects_group=objects,\
+#                shadows_group=shadows,proj=proj3D,del_obj=del_obj_list)
           
 # make a splash
 
@@ -262,30 +256,35 @@ b1 = projectile(bullet_pos,bullet_vel,batch=bullet_batch,image='bullet0.png',
 #                shadow_image = 'splash2_shadow.png',
 #                objects_group=objects,
 #                shadows_group=shadows,proj=proj3D,del_obj=del_obj_list)]
-splash_list = []
+#splash_list = []
 #splash_list = make_splash(splash_pos[0],splash_pos[1],splash_batch,objects,shadows,proj3D=proj3D,num=10,del_obj_list=del_obj_list,create_obj_list=create_obj_list)  
 
-@window.event
+G1 = game(proj3D)
+G1.make_bullet(bullet_pos,bullet_vel)
+G1.make_ship()
+
+@G1.window.event
 def on_draw():
-    window.clear()
-    bg_vertex_list.draw(pyglet.gl.GL_QUADS) # draw blue background
+    G1.window.clear()
+    G1.bg_vertex_list.draw(pyglet.gl.GL_QUADS) # draw blue background
+    G1.bullet_batch.draw()
+    G1.splash_batch.draw()
 #    b1.vertexlist.draw(pyglet.gl.GL_QUADS)
-    bullet_batch.draw()
-    splash_batch.draw()
+#    bullet_batch.draw()
+#    splash_batch.draw()
 #    bullet_vertex_list.draw(pyglet.gl.GL_QUADS)
     
 def update(dt):
-    print(del_obj_list)
-    for iobj,obj in enumerate(del_obj_list):
-        del del_obj_list[iobj]        
-        
+    G1.update(1.5*dt)
     
-    if b1.update(dt):
-        splash_list=make_splash(b1.pos[0],b1.pos[1],splash_batch,objects,shadows,proj3D=proj3D,num=10,del_obj_list=del_obj_list,create_obj_list=create_obj_list)  
-
-    
-    for splsh in splash_list:
-        splsh.update(dt)
+@G1.window.event
+def on_mouse_press(x, y, button, modifiers):
+    global draw_splash
+    if button == mouse.LEFT:
+        s1.move(x,y)
+    elif button == mouse.RIGHT:
+        splash1.position=(x,y)
+        splash1.visible = True
 
     
 pyglet.clock.schedule_interval(update, 1/60.)
