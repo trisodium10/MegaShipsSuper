@@ -261,7 +261,7 @@ bullet_vel = 2*np.array([10,10,40])
 
 G1 = game(proj3D)
 G1.make_bullet(bullet_pos,bullet_vel)
-G1.make_ship()
+#G1.make_ship(0,0,3)
 
 @G1.window.event
 def on_draw():
@@ -281,10 +281,11 @@ def update(dt):
 def on_mouse_press(x, y, button, modifiers):
     global draw_splash
     if button == mouse.LEFT:
-        s1.move(x,y)
-    elif button == mouse.RIGHT:
-        splash1.position=(x,y)
-        splash1.visible = True
+        if len(G1.ships)>0:
+            G1.ships[0].move(x,y)
+#    elif button == mouse.RIGHT:
+#        splash1.position=(x,y)
+#        splash1.visible = True
 
     
 pyglet.clock.schedule_interval(update, 1/60.)
