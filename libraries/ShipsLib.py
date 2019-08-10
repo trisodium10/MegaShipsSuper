@@ -73,6 +73,12 @@ class ship:
         retstr+='|' 
         for seg in self.Segments:
             retstr+=' %d |'%seg.hp
+        retstr+='\n'
+        retstr+='%d Cannons\n'%len(self.Cannons)
+        shot_count = 0
+        for shot_type in self.Shot:
+            shot_count+=shot_type.count
+        retstr+='%d Shots'%shot_count
         return retstr
     
     def add_to_board(self,batch=None):
@@ -113,13 +119,34 @@ class ship:
         except ValueError:
             # if we do not find the shot, add it to the list
             self.Shot+=[new_shot]  # for now don't look for common shot
+
+    def load_cannon(self,c_index,s_index):
+        # load cannon indexed by c_index
+        # with shot indexed by s_index
+        # assumes c_index and s_index are valid
+    
+        # To be added to flag illegal indices
+#        if c_index >= len(self.Cannons):
+#            raise InvalidCannonIndex
+#        if s_index >= len(self.Shot):
+#            raise InvalidShotIndex
+    
+        self.Cannons[c_index].load(self.Shot[s_index].load_shot())
     
     def fire_cannon(self,index,x,y):
+        # To be added to flag illegal indices
+#        if index >= len(self.Cannons):
+#            raise InvalidCannonIndex
         coord = np.array([[x],[y]])
         coordship = np.dot(transform(self.theta),coord-self.coords)
-        hit_coords = self.Cannons[index].fire(coordship)
-        hit_coords = np.dot(transform(-self.theta),hit_coords)+self.coords
-        return hit_coords
+        hit_coords,vel_vec = self.Cannons[index].fire(coordship)
+        if not hit_coords is None:
+            hit_coords = np.dot(transform(-self.theta),hit_coords)+self.coords
+#            fire_coords = np.dot(transform(-self.theta),self.Cannons[index].coords)+self.coords
+            vel_vec = np.dot(transform(-self.theta,dim=3),vel_vec)
+            return hit_coords,vel_vec #,fire_coords
+        else:
+            return None,None #,None
         
     def master_move(self,x_new,y_new):
         # override ship location
@@ -194,7 +221,7 @@ class ship:
         
 
 class cannon:
-    def __init__(self,z=0,w=0,Power=1,MaxRange=10,Accuracy=1,theta=0,position=(0,0),mass=1):
+    def __init__(self,z=0,w=0,Power=1,MaxRange=80,Accuracy=1,theta=0,position=(0,0),mass=1):
 
         self.mass = mass   # cannon mass
         self.coords = np.array([[z],[w]])  # position of cannon on ship
@@ -220,8 +247,9 @@ class cannon:
         
     
     def load(self,shot):
-        self.Loaded = True
-        self.Shot = shot
+        if not self.Loaded and shot.count > 0:
+            self.Loaded = True
+            self.Shot = shot
         
     def fire(self,t_coords,shot=1):
         # hit success depends on a combination of target range, target size, 
@@ -250,16 +278,29 @@ class cannon:
             dthetaZ = np.random.randn()*self.Accuracy*np.pi/180
             
             thetaX = np.arctan2(coord[1,0],coord[0,0])+dthetaX
-            thetaZ = 0.5*np.arcsin(t_dist*g/v0**2)+dthetaZ
+            if t_dist*g <= v0**2:
+                thetaZ = 0.5*np.arcsin(t_dist*g/v0**2)+dthetaZ
+            else:
+                thetaZ = np.pi/4
+                
             if np.isnan(thetaZ):
                 thetaZ = np.pi/4
             
             # landing point in cannon coordinate frame
             x_shot = np.cos(thetaX)*v0**2/g*np.sin(2*thetaZ)
             y_shot = np.sin(thetaX)*v0**2/g*np.sin(2*thetaZ)
+            
+            vel_vec = np.array([[np.cos(thetaX)*np.cos(thetaZ)],
+                                [np.sin(thetaX)*np.cos(thetaZ)],
+                                [np.sin(thetaZ)]])*v0
 
             coord_out = np.dot(transform(-self.theta),np.array([[x_shot],[y_shot]]))+self.coords
-            return coord_out
+            vel_out = np.dot(transform(-self.theta,dim=3),vel_vec)
+            self.Loaded=False
+            
+            return coord_out,vel_out
+        else:
+            return None,None
 
 class shot:
     """
@@ -286,8 +327,11 @@ class shot:
     def load_shot(self):
         # return one shot object to load in the cannon
         # and decrease the shot storage by 1
-        self.count-=1
-        return shot(self.mass,self.damage,self.name,count=1)
+        if self.count > 0:
+            self.count-=1
+            return shot(self.mass,self.damage,self.name,count=1)
+        else:
+            return shot(self.mass,self.damage,self.name,count=0)
         
 def standard_shot(count=10):
     # generate a store of default shot
@@ -324,12 +368,16 @@ class segment:
     
     
 
-def transform(theta):
+def transform(theta,dim=2):
     """
     transform gives the transformation matrix into a coordinate
     system defined by the new object orientation theta
+    set dim = 3 to handle 3d vectors instead of 2d (default)
     """
-    return np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
+    if dim == 2:
+        return np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])
+    elif dim == 3:
+        return np.array([[np.cos(theta),-np.sin(theta),0],[np.sin(theta),np.cos(theta),0],[0,0,1]])
     
 def center_image(image):
     """Sets an image's anchor point to its center"""
