@@ -284,7 +284,7 @@ class shot:
         # increase the amount of stored shot
         self.count+=count
     def load_shot(self):
-        # return one shot object to laod in the cannon
+        # return one shot object to load in the cannon
         # and decrease the shot storage by 1
         self.count-=1
         return shot(self.mass,self.damage,self.name,count=1)

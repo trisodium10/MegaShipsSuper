@@ -259,6 +259,8 @@ bullet_vel = 2*np.array([10,10,40])
 #splash_list = []
 #splash_list = make_splash(splash_pos[0],splash_pos[1],splash_batch,objects,shadows,proj3D=proj3D,num=10,del_obj_list=del_obj_list,create_obj_list=create_obj_list)  
 
+from pyglet.window import mouse
+
 G1 = game(proj3D)
 G1.make_bullet(bullet_pos,bullet_vel)
 #G1.make_ship(0,0,3)
@@ -279,7 +281,7 @@ def update(dt):
     
 @G1.window.event
 def on_mouse_press(x, y, button, modifiers):
-    global draw_splash
+#    global draw_splash
     if button == mouse.LEFT:
         if len(G1.ships)>0:
             G1.ships[0].move(x,y)
