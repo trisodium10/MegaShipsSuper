@@ -82,11 +82,24 @@ class ship:
         return retstr
     
     def add_to_board(self,batch=None):
-        ship_image = pyglet.resource.image('ship1.png')
-        center_image(ship_image)
-        self.sprite = pyglet.sprite.Sprite(ship_image, 
+#        ship_image = pyglet.resource.image('ship1.png')
+        
+        self.ship_image_R = pyglet.resource.image('ship1.png')
+        self.ship_image_L = flip_image(self.ship_image_R,axis=1)
+#        self.ship_image_L = self.ship_image_R.get_region(0, 0, self.ship_image_R.width, self.ship_image_R.height) 
+        
+        center_image(self.ship_image_R)
+        center_image(self.ship_image_L)
+        self.sprite = pyglet.sprite.Sprite(self.ship_image_R, 
                              x=self.coords[0,0], y=self.coords[1,0],
                              batch=batch)
+#        face_left = image.load('person.png').texture
+#        face_right = face_left.get_region(0, 0, face_left.width, face_left.height)        
+        
+#        center_image(ship_image)
+#        self.sprite = pyglet.sprite.Sprite(ship_image, 
+#                             x=self.coords[0,0], y=self.coords[1,0],
+#                             batch=batch)
         self.opacity = 0
         self.sprite.rotation=self.theta
         self.sprite.scale = 0.05
@@ -156,12 +169,20 @@ class ship:
     def set_angle(self,angle):
         # set the angle of the ship in degrees
         self.theta = angle
-        self.sprite.rotation = self.theta
+        self.sprite.rotation = -self.theta
+        if np.abs(self.theta) > 90 and self.sprite.image is self.ship_image_R:
+            self.sprite.image = self.ship_image_L
+        elif np.abs(self.theta) < 90 and self.sprite.image is self.ship_image_L:
+            self.sprite.image = self.ship_image_R
         
     def move(self,x_new,y_new):
         c_new = np.array([[x_new],[y_new]])
         self.theta = np.arctan2(c_new[1,0]-self.coords[1,0],c_new[0,0]-self.coords[0,0])*180/np.pi
-        self.sprite.rotation = self.theta+90
+        self.sprite.rotation = -self.theta
+        if np.abs(self.theta) > 90 and self.sprite.image is self.ship_image_R:
+            self.sprite.image = self.ship_image_L
+        elif np.abs(self.theta) < 90 and self.sprite.image is self.ship_image_L:
+            self.sprite.image = self.ship_image_R
 #        dtheta = np.arctan2(c_new[1,0]-self.coords[1,0],c_new[0,0]-self.coords[0,0])*180/np.pi-self.theta
 #        self.theta += dtheta
 #        self.sprite.rotation = dtheta
@@ -221,7 +242,7 @@ class ship:
         
 
 class cannon:
-    def __init__(self,z=0,w=0,Power=1,MaxRange=80,Accuracy=1,theta=0,position=(0,0),mass=1):
+    def __init__(self,z=0,w=0,Power=1,MaxRange=80,Accuracy=4,theta=0,position=(0,0),mass=1):
 
         self.mass = mass   # cannon mass
         self.coords = np.array([[z],[w]])  # position of cannon on ship
@@ -353,7 +374,7 @@ class segment:
     and a possible mast with value corresponding to the amount it contributes
         to the ship's propel property
     """
-    def __init__(self,z,hp=3,length=1,mass=10,mast=1000):
+    def __init__(self,z,hp=3,length=3,mass=10,mast=1000):
         self.hp = hp  # hit points
         self.z = z  # coordinate location along the ship (from the front)
         self.length = length  # length of segment
@@ -363,6 +384,7 @@ class segment:
         self.hp-=damage
     def set_z(self,z):
         # set the z location of the segment
+        # (along the ship's length)
         self.z = z
     
     
@@ -383,3 +405,21 @@ def center_image(image):
     """Sets an image's anchor point to its center"""
     image.anchor_x = image.width // 2
     image.anchor_y = image.height // 2
+    
+def flip_image(image,axis=0):
+    # flip an image
+    # axis = 0: horizontal
+    # axis = 1: vertical
+
+    # tex_coords (tuple) – 12-tuple of float, 
+    # named (u1, v1, r1, u2, v2, r2, …). u, v, r give the 3D texture coordinates 
+    # for vertices 1-4. The vertices are specified in the order 
+    # bottom-left, bottom-right, top-right and top-left.
+    image_flip = image.get_region(0, 0, image.width, image.height)
+    t = image_flip.tex_coords
+    if axis == 0:
+        image_flip.tex_coords = t[3:6] + t[:3] + t[9:] + t[6:9]
+    else:
+        image_flip.tex_coords = t[9:] + t[6:9] + t[3:6] + t[:3]
+        
+    return image_flip
