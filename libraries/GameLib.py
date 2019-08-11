@@ -51,28 +51,49 @@ class game:
         self.bullets = []
         self.splashes = []
         
-    def add_player(self,name=None):
+    def add_player(self,name=None,base_loc=None):
         if name is None:
             name = 'Player '+str(len(self.players)+1)
-        self.players+=[player(name)]
+        
+        if base_loc is None:
+            base_loc = base_location(self.board,len(self.players))        
+            
+        self.players+=[player(name,base_loc)]
         if self.active_player is None:
             self.active_player = self.players[0]
         
         #        self.stage = 'set'  # player sets action
+    def next_player(self):
+        # change turn to next player in the list
+        next_player_index = self.players.index(self.active_player)+1
+        if next_player_index >= len(self.players):
+            next_player_index = 0
+        
+        self.active_player = self.players[next_player_index]
+        print(self.active_player)
     
     def set_projection(self,theta,phi):
         self.proj3D = matrix_rot3d(theta,phi)
         
-    def add_ship(self,x,y,ship_len=3,player_sel=None):
+    def add_ship(self,ship_len=3,player_sel=None,loc=None):
         # add a ship to the current active player
-        self.ships+=[ship(400,300)] # define a default ship
+        if player_sel is None:
+            player_sel = self.active_player
+    
+        if loc is None:
+            loc=((player_sel.base_loc[0][0]-player_sel.base_loc[1][0])*np.random.rand()+player_sel.base_loc[1][0],
+                 (player_sel.base_loc[0][1]-player_sel.base_loc[3][1])*np.random.rand()+player_sel.base_loc[3][1])
+        
+        self.ships+=[ship(loc[0],loc[1])] # define a default ship
         for ai in range(ship_len):
             self.ships[-1].push_segment(segment(0))
         self.ships[-1].update_ship()
-        if player_sel is None:
-            self.active_player.add_ship(self.ships[-1])
-        else:
-            player_sel.add_ship(self.ships[-1])
+        player_sel.add_ship(self.ships[-1])
+        
+#        if player_sel is None:
+#            self.active_player.add_ship(self.ships[-1])
+#        else:
+#            player_sel.add_ship(self.ships[-1])
         
     def batch_draw(self):
         for p in self.players:
@@ -130,19 +151,24 @@ class board:
         edge_wid = 10
         self.board_x = win_size[0]
         self.board_y = win_size[1]
+        self.vertices = (edge_wid, edge_wid, 
+                          edge_wid, win_size[1]-edge_wid , 
+                          win_size[0]-edge_wid, win_size[1]-edge_wid, 
+                          win_size[0]-edge_wid, edge_wid)
 
         
         self.bg_vertex_list = pyglet.graphics.vertex_list(4,
-            ('v2i', (edge_wid, edge_wid, edge_wid, win_size[1]-edge_wid , win_size[0]-edge_wid, win_size[1]-edge_wid, win_size[0]-edge_wid, edge_wid)),
+            ('v2i', self.vertices),
             ('c3B', (80, 80, 235, 110, 110, 225, 140, 140, 225, 110, 110, 175))
             )  
         
 class player:
-    def __init__(self,name):
+    def __init__(self,name,base_loc):
         self.ships = []     # list of player's ships
         self.money = 10     # initial money player starts with
         self.batch = pyglet.graphics.Batch()  # create a batch object for the player's objects
         self.name = name
+        self.base_loc = list(base_loc) # vertex locations of the base
         
     def add_ship(self,ship):
         # Add a ship object to the list of ships belonging to this player
@@ -284,3 +310,49 @@ def make_splash(x,y,splash_batch,objects,shadows,proj3D=None,num=10,del_obj_list
                     objects_group=objects,
                     shadows_group=shadows,proj=proj3D,del_obj=del_obj_list)]
     return splash_list
+    
+def base_location(board,player_num,base_len=40):
+    # return the verticies of the base location for player number player_num
+    # given a board
+    # player_num is base zero
+    # base_len: length of a side for the base
+
+
+    if player_num == 0:
+        base_vertices = [(board.vertices[0],board.vertices[1])]
+        base_vertices+= [(board.vertices[0]+base_len,board.vertices[1])]
+        base_vertices+= [(board.vertices[0]+base_len,board.vertices[1]+base_len)]
+        base_vertices+= [(board.vertices[0],board.vertices[1]+base_len)]
+        
+    elif player_num == 1:
+        base_vertices = [(board.vertices[4],board.vertices[5])]
+        base_vertices+= [(board.vertices[4]-base_len,board.vertices[5])]
+        base_vertices+= [(board.vertices[4]-base_len,board.vertices[5]-base_len)]
+        base_vertices+= [(board.vertices[4],board.vertices[5]-base_len)]
+        
+    elif player_num == 2:
+        base_vertices = [(board.vertices[2],board.vertices[3])]
+        base_vertices+= [(board.vertices[2]+base_len,board.vertices[3])]
+        base_vertices+= [(board.vertices[2]+base_len,board.vertices[3]-base_len)]
+        base_vertices+= [(board.vertices[2],board.vertices[3]-base_len)]
+        
+    elif player_num == 3:
+        base_vertices = [(board.vertices[6],board.vertices[7])]
+        base_vertices+= [(board.vertices[6]-base_len,board.vertices[7])]
+        base_vertices+= [(board.vertices[6]-base_len,board.vertices[7]+base_len)]
+        base_vertices+= [(board.vertices[6],board.vertices[7]+base_len)]
+        
+    elif player_num == 4:
+        base_vertices = [(board.board_x/2,board.vertices[1])]
+        base_vertices+= [(board.board_x/2-base_len,board.vertices[1])]
+        base_vertices+= [(board.board_x/2-base_len,board.vertices[1]+base_len)]
+        base_vertices+= [(board.board_x/2,board.vertices[1]+base_len)]
+        
+    elif player_num == 5:
+        base_vertices = [(board.board_x/2,board.vertices[3])]
+        base_vertices+= [(board.board_x/2-base_len,board.vertices[3])]
+        base_vertices+= [(board.board_x/2-base_len,board.vertices[3]+base_len)]
+        base_vertices+= [(board.board_x/2,board.vertices[3]+base_len)]
+        
+    return base_vertices
+        
