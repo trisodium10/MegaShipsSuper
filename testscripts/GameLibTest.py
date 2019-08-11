@@ -7,6 +7,7 @@ Created on Sat May  4 20:06:49 2019
 
 import pyglet
 from pyglet.window import mouse
+from pyglet.window import key
 
 from ShipsLib import *
 from GameLib import *
@@ -16,12 +17,22 @@ import numpy as np
 
 g1 = game()                     # create the game
 g1.add_player()                 # create a player
-g1.add_ship(400,300,player_sel=None)  # create a ship for the active player
-g1.active_player.ships[0].add_cannon(cannon())  # add a default cannon to the ship
-g1.active_player.ships[0].add_shot(standard_shot())  # load default shot onto the ship
+g1.add_player()                 # create another player
+
+# give each player a ship with cannon and shot
+for player in g1.players:
+    g1.add_ship(player_sel=player)  # create a ship for the active player
+    player.ships[0].add_cannon(cannon())  # add a default cannon to the ship
+    player.ships[0].add_shot(standard_shot())  # load default shot onto the ship
+    player.ships[0].load_cannon(0,0)
+    
+    
+#g1.add_ship(400,300,player_sel=None)  # create a ship for the active player
+#g1.active_player.ships[0].add_cannon(cannon())  # add a default cannon to the ship
+#g1.active_player.ships[0].add_shot(standard_shot())  # load default shot onto the ship
 
 # load the cannon
-g1.active_player.ships[0].load_cannon(0,0)
+#g1.active_player.ships[0].load_cannon(0,0)
 #g1.active_player.ships[0].Cannons[0].load(g1.active_player.ships[0].Shot[0].load_shot())
 
 for p in g1.players:
@@ -66,7 +77,12 @@ def on_mouse_press(x, y, button, modifiers):
             g1.make_bullet(bullet_pos,bullet_vel.flatten())
             # reload the cannon
             g1.active_player.ships[0].load_cannon(0,0)
-        
+            
+@g1.board.window.event
+def on_key_press(symbol, modifiers):
+    if symbol==key.SPACE:
+        g1.next_player()
+            
         
 pyglet.clock.schedule_interval(update, 1/60.)
 #pyglet.clock.schedule_interval(update_splash,1/2.0)
