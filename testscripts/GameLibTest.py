@@ -57,14 +57,14 @@ def on_mouse_press(x, y, button, modifiers):
         g1.active_player.ships[0].move(x,y)
     elif button == mouse.RIGHT:
         
-#        land_coord,bullet_vel,bullet_pos0=g1.active_player.ships[0].fire_cannon(0,x,y)
-        land_coord,bullet_vel=g1.active_player.ships[0].fire_cannon(0,x,y)
+        land_coord,bullet_vel,bullet_pos0,bullet_damage=g1.active_player.ships[0].fire_cannon(0,x,y)
+#        land_coord,bullet_vel=g1.active_player.ships[0].fire_cannon(0,x,y)
         
 #        print(bullet_vel)
      
 # Manual fire definition   
-        bullet_pos = np.concatenate((g1.active_player.ships[0].coords.flatten(),
-                                         np.zeros(1)))
+#        bullet_pos = np.concatenate((g1.active_player.ships[0].coords.flatten(),
+#                                         np.zeros(1)))
 #        bullet_vel = np.array([x-g1.active_player.ships[0].coords[0,0],
 #                                     y-g1.active_player.ships[0].coords[1,0],
 #                                     0])
@@ -73,8 +73,8 @@ def on_mouse_press(x, y, button, modifiers):
 #        bullet_vel = bullet_vel*15
         
         if not bullet_vel is None:   
-#            bullet_pos = np.array([bullet_pos0[0,0],bullet_pos0[1,0],0])
-            g1.make_bullet(bullet_pos,bullet_vel.flatten())
+            bullet_pos = np.array([bullet_pos0[0,0],bullet_pos0[1,0],bullet_pos0[2,0]])
+            g1.make_bullet(bullet_pos,bullet_vel.flatten(),bullet_damage)
             # reload the cannon
             g1.active_player.ships[0].load_cannon(0,0)
             

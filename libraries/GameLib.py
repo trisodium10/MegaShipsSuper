@@ -70,6 +70,9 @@ class game:
             next_player_index = 0
         
         self.active_player = self.players[next_player_index]
+        # reset the movement for all of the player's ships
+        for s in self.active_player.ships:
+            s.reset_movement()
         print(self.active_player)
     
     def set_projection(self,theta,phi):
@@ -84,7 +87,7 @@ class game:
             loc=((player_sel.base_loc[0][0]-player_sel.base_loc[1][0])*np.random.rand()+player_sel.base_loc[1][0],
                  (player_sel.base_loc[0][1]-player_sel.base_loc[3][1])*np.random.rand()+player_sel.base_loc[3][1])
         
-        self.ships+=[ship(loc[0],loc[1])] # define a default ship
+        self.ships+=[ship(loc[0],loc[1],player=player_sel)] # define a default ship
         for ai in range(ship_len):
             self.ships[-1].push_segment(segment(0))
         self.ships[-1].update_ship()
@@ -108,6 +111,23 @@ class game:
         for iobj,obj in enumerate(self.bullets):
             obj.update(dt)
 #            print(obj.pos)
+            # check for hit ship
+            for s in self.ships: 
+                # if the ship is at all close to the bullet, evaluate for
+                # a hit
+                if np.sum((s.coords.flatten()-np.array(obj.pos[:2]))**2) < 20**2:
+#                    print(s.coords.flatten())
+#                    print(s.test_hit(obj.pos))
+                    hit,iseg=s.test_hit(obj.pos)
+                    if hit:
+                        s.Segments[iseg].apply_damage(obj.damage)
+                        print('hit')
+                        print(s)
+                        print('Segment')
+                        print(iseg)
+                        self.bullets.remove(obj)
+#                        self.make_explosion(obj.pos[0],obj.pos[1])
+            
             if obj.pos[2] < 0:
                 self.bullets.remove(obj)
                 self.make_splash(obj.pos[0],obj.pos[1])
@@ -117,8 +137,8 @@ class game:
             if obj.pos[2] < 0:
                 self.splashes.remove(obj)
             
-    def make_bullet(self,bullet_pos,bullet_vel):
-        self.bullets+=[bullet(bullet_pos,bullet_vel,batch=self.bullet_batch,
+    def make_bullet(self,bullet_pos,bullet_vel,damage):
+        self.bullets+=[bullet(bullet_pos,bullet_vel,damage,batch=self.bullet_batch,
                 objects_group=self.objects_group,\
                 shadows_group=self.shadows_group,proj=self.proj3D)]       
                 
@@ -281,11 +301,12 @@ class projectile(object):
                 self.del_obj+=[self]
 
 class bullet(projectile):
-    def __init__(self,pos,vel,batch=None,proj=None,objects_group=None,shadows_group=None,del_obj=None,create_obj=None):
+    def __init__(self,pos,vel,damage,batch=None,proj=None,objects_group=None,shadows_group=None,del_obj=None,create_obj=None):
         shadow_image = 'bullet0_shadow.png'
         bullet_image = 'bullet0.png'
         super(bullet,self).__init__(pos,vel,batch=batch,proj=proj,image=bullet_image,shadow_image=shadow_image,
-                 objects_group=objects_group,shadows_group=shadows_group,del_obj=del_obj,create_obj=create_obj)        
+                 objects_group=objects_group,shadows_group=shadows_group,del_obj=del_obj,create_obj=create_obj)   
+        self.damage = damage
 
     def update(self,dt):
         super(bullet,self).update(dt)

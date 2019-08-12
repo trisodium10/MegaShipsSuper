@@ -35,7 +35,7 @@ class ship:
     property is increased by having more and better masts.  The mass is
     increased by having more segments, cannons and ammunition on the ship.
     """
-    def __init__(self,x,y,width=1,theta=0):
+    def __init__(self,x,y,width=1,theta=0,player=None):
         """
         x,y location on board
         """
@@ -52,6 +52,7 @@ class ship:
         
         self.width = width #Nmasts*m_width+b_width
         self.length = 0  # initial length is zero
+        self.height = 4  # ship height
         
         self.Cannons = []  # list of cannon pairs
         
@@ -62,9 +63,14 @@ class ship:
         
         self.move_dist = 0 #self.propel/self.mass
         
+        self.move_frac = 1.0  # fraction of movement available
+        
+        
         self.theta = theta # the ship's orientation on the map
         
         self.sprite = None  # pyglet sprite for the ship
+        
+        self.player=player
         
     def __repr__(self):
         retstr = 'ship class\n'
@@ -152,14 +158,14 @@ class ship:
 #            raise InvalidCannonIndex
         coord = np.array([[x],[y]])
         coordship = np.dot(transform(self.theta),coord-self.coords)
-        hit_coords,vel_vec = self.Cannons[index].fire(coordship)
+        hit_coords,vel_vec,damage = self.Cannons[index].fire(coordship)
         if not hit_coords is None:
             hit_coords = np.dot(transform(-self.theta),hit_coords)+self.coords
-#            fire_coords = np.dot(transform(-self.theta),self.Cannons[index].coords)+self.coords
+            fire_coords = np.concatenate((np.dot(transform(-self.theta),self.Cannons[index].coords)+self.coords,np.array([[self.height]])),axis=0)
             vel_vec = np.dot(transform(-self.theta,dim=3),vel_vec)
-            return hit_coords,vel_vec #,fire_coords
+            return hit_coords,vel_vec,fire_coords,damage
         else:
-            return None,None #,None
+            return None,None,None,None
         
     def master_move(self,x_new,y_new):
         # override ship location
@@ -176,27 +182,33 @@ class ship:
             self.sprite.image = self.ship_image_R
         
     def move(self,x_new,y_new):
-        c_new = np.array([[x_new],[y_new]])
-        self.theta = np.arctan2(c_new[1,0]-self.coords[1,0],c_new[0,0]-self.coords[0,0])*180/np.pi
-        self.sprite.rotation = -self.theta
-        if np.abs(self.theta) > 90 and self.sprite.image is self.ship_image_R:
-            self.sprite.image = self.ship_image_L
-        elif np.abs(self.theta) < 90 and self.sprite.image is self.ship_image_L:
-            self.sprite.image = self.ship_image_R
-#        dtheta = np.arctan2(c_new[1,0]-self.coords[1,0],c_new[0,0]-self.coords[0,0])*180/np.pi-self.theta
-#        self.theta += dtheta
-#        self.sprite.rotation = dtheta
-#        print(self.theta)
-#        print(dtheta)
-        if np.sqrt(np.sum((c_new-self.coords)**2)) <= self.move_dist:
-            self.coords = c_new.copy()
-        else:
-            # try to move toward the requested location
-            n_move = c_new-self.coords
-            n_move = n_move/np.sqrt(np.sum(n_move**2))*self.move_dist
-            self.coords=n_move+self.coords
-#        self.sprite.position = tuple(self.coords.flatten())
-        
+        # should we let the ship rotate even if no movement is left?
+        if self.move_frac > 0.0:
+            c_new = np.array([[x_new],[y_new]])
+            self.theta = np.arctan2(c_new[1,0]-self.coords[1,0],c_new[0,0]-self.coords[0,0])*180/np.pi
+            self.sprite.rotation = -self.theta
+            # set the image based on the orientation of the ship to keep it
+            # right-side-up
+            if np.abs(self.theta) > 90 and self.sprite.image is self.ship_image_R:
+                self.sprite.image = self.ship_image_L
+            elif np.abs(self.theta) < 90 and self.sprite.image is self.ship_image_L:
+                self.sprite.image = self.ship_image_R
+
+            if np.sqrt(np.sum((c_new-self.coords)**2)) <= self.move_dist*self.move_frac:
+                # subtract the distance traveled from the turn allocation
+                self.move_frac = 1-np.sqrt(np.sum((c_new-self.coords)**2))/self.move_dist
+                # update the ship location
+                self.coords = c_new.copy()
+                
+            else:
+                # try to move toward the requested location
+                n_move = c_new-self.coords
+                n_move = n_move/np.sqrt(np.sum(n_move**2))*self.move_dist*self.move_frac
+                self.coords=n_move+self.coords
+                self.move_frac = 0.0  # all of the movement allocation for this turn is used up
+
+    def reset_movement(self):
+        self.move_frac = 1.0
             
     def update(self,dt):
         # update for animation and motion
@@ -210,19 +222,25 @@ class ship:
         self.update_mass()
         self.update_move()
         
+        # check if sunk? (any zero hp segments?)
+        
     def update_move(self):
         self.move_dist = self.propel*1.0/self.mass
     
     def update_length(self):
-        length = []
-        mass_len = []
+        length = 0
+        mass_len = 0
         propel = 0
+        seg_mass = 0
         for seg in self.Segments:
-            length+=[seg.length]
-            mass_len+=[seg.mass*seg.length]
+            length+=seg.length
+#            mass_len+=[seg.mass*seg.length]
+            mass_len+=seg.mass*(seg.z+seg.length*0.5)
+            seg_mass+=seg.mass
             propel+=seg.mast
-        self.center_of_mass = np.interp(0.5,np.array(mass_len)/sum(mass_len),np.array(length))
-        self.length = sum(length)
+#        self.center_of_mass = np.interp(0.5,np.array(mass_len)/sum(mass_len),np.array(length))
+        self.center_of_mass = mass_len/seg_mass
+        self.length = length
         self.propel=propel
     
     def update_mass(self):
@@ -239,6 +257,20 @@ class ship:
             shot_mass+=(sh.mass*sh.count)
             
         self.mass = cannon_mass+seg_mass+shot_mass
+        
+    def test_hit(self,obj_coords):
+        hit_ship = False
+        seg_index = None
+        # check if the object is within height range first
+        if obj_coords[2] <= self.height:
+            obj_new =  np.dot(transform(self.theta),obj_coords[:2].reshape(2,1)-self.coords)
+            if obj_new[0] <= self.width and obj_new[1] >= 0 and obj_new[1] < self.length:
+                hit_ship = True
+                if hit_ship:
+                    for iseg,seg in enumerate(self.Segments):
+                        if seg.z <= obj_new[1] and seg.z+seg.length >= obj_new[1]:
+                            seg_index=iseg
+        return hit_ship,seg_index
         
 
 class cannon:
@@ -317,11 +349,15 @@ class cannon:
 
             coord_out = np.dot(transform(-self.theta),np.array([[x_shot],[y_shot]]))+self.coords
             vel_out = np.dot(transform(-self.theta,dim=3),vel_vec)
-            self.Loaded=False
             
-            return coord_out,vel_out
+            damage = self.Shot.damage
+            self.Loaded=False
+            self.Shot = None
+            
+            
+            return coord_out,vel_out,damage
         else:
-            return None,None
+            return None,None,None
 
 class shot:
     """
