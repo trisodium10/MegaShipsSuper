@@ -54,35 +54,80 @@ def update(dt):
 @g1.board.window.event
 def on_mouse_press(x, y, button, modifiers):
     if button == mouse.LEFT:
-        g1.active_player.ships[0].move(x,y)
+        if not g1.active_player.active_ship is None:
+            g1.active_player.active_ship.move(x,y)
+#            g1.active_player.ships[0].move(x,y)
     elif button == mouse.RIGHT:
-        
-        land_coord,bullet_vel,bullet_pos0,bullet_damage=g1.active_player.ships[0].fire_cannon(0,x,y)
-#        land_coord,bullet_vel=g1.active_player.ships[0].fire_cannon(0,x,y)
-        
-#        print(bullet_vel)
-     
-# Manual fire definition   
-#        bullet_pos = np.concatenate((g1.active_player.ships[0].coords.flatten(),
-#                                         np.zeros(1)))
-#        bullet_vel = np.array([x-g1.active_player.ships[0].coords[0,0],
-#                                     y-g1.active_player.ships[0].coords[1,0],
-#                                     0])
-#        bullet_vel = bullet_vel/np.sqrt(np.sum(bullet_vel**2))
-#        bullet_vel[2] = 4
-#        bullet_vel = bullet_vel*15
-        
-        if not bullet_vel is None:   
-            bullet_pos = np.array([bullet_pos0[0,0],bullet_pos0[1,0],bullet_pos0[2,0]])
-            g1.make_bullet(bullet_pos,bullet_vel.flatten(),bullet_damage)
-            # reload the cannon
-            g1.active_player.ships[0].load_cannon(0,0)
+        if not g1.active_player.active_ship is None:
+            land_coord,bullet_vel,bullet_pos0,bullet_damage=g1.active_player.active_ship.fire_cannon(0,x,y)
+#            land_coord,bullet_vel,bullet_pos0,bullet_damage=g1.active_player.ships[0].fire_cannon(0,x,y)
+    #        land_coord,bullet_vel=g1.active_player.ships[0].fire_cannon(0,x,y)
+            
+    #        print(bullet_vel)
+         
+    # Manual fire definition   
+    #        bullet_pos = np.concatenate((g1.active_player.ships[0].coords.flatten(),
+    #                                         np.zeros(1)))
+    #        bullet_vel = np.array([x-g1.active_player.ships[0].coords[0,0],
+    #                                     y-g1.active_player.ships[0].coords[1,0],
+    #                                     0])
+    #        bullet_vel = bullet_vel/np.sqrt(np.sum(bullet_vel**2))
+    #        bullet_vel[2] = 4
+    #        bullet_vel = bullet_vel*15
+            
+            if not bullet_vel is None:   
+                bullet_pos = np.array([bullet_pos0[0,0],bullet_pos0[1,0],bullet_pos0[2,0]])
+                g1.make_bullet(bullet_pos,bullet_vel.flatten(),bullet_damage)
+                # reload the cannon
+#                g1.active_player.ships[0].load_cannon(0,0)
             
 @g1.board.window.event
 def on_key_press(symbol, modifiers):
     if symbol==key.SPACE:
+        # give a turn to the next player
         g1.next_player()
-            
+    if symbol == key.N:
+        # activate the next ship in the player's fleet
+        g1.active_player.cycle_ship()
+    
+    if symbol == key.L:
+        # load the current ship if it has sufficient movement and 
+        # it's within its base
+        print("Load shot request received")
+        if not g1.active_player.active_ship is None:
+            if g1.active_player.active_ship.test_on_base():
+                if g1.active_player.active_ship.move_frac > 0.5:
+                    g1.active_player.active_ship.add_shot(standard_shot(count=5))
+                    g1.active_player.active_ship.use_move_frac(0.51)
+                    print("loading 5 shot onto")
+                    print(g1.active_player.active_ship)
+                else:
+                    print("Insufficient Move Fraction:")
+                    print(g1.active_player.active_ship.move_frac) 
+            else:
+                print("Ship is not currently on base")
+                print(g1.active_player.active_ship.coords)
+                print(g1.active_player.base_loc)
+                
+        else:
+            print("No active ship")
+    
+    if symbol == key.C:
+        # load another cannon on the ship
+        if g1.active_player.active_ship.test_on_base():
+            if len(g1.active_player.active_ship.Cannons) < len(g1.active_player.active_ship.Segments):
+                if g1.active_player.active_ship.move_frac >= 1.0:
+                    g1.active_player.active_ship.add_cannon(cannon())
+                    g1.active_player.active_ship.use_move_frac(1.0)
+                else:
+                    print("Loading a connon requires the entire move")
+            else:
+                print("A ship cannot hold more cannons than it has segments")
+        else:
+            print("Ship is not currently on base")
+            print(g1.active_player.active_ship.coords)
+            print(g1.active_player.base_loc)
+        
         
 pyglet.clock.schedule_interval(update, 1/60.)
 #pyglet.clock.schedule_interval(update_splash,1/2.0)

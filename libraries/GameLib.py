@@ -73,6 +73,12 @@ class game:
         # reset the movement for all of the player's ships
         for s in self.active_player.ships:
             s.reset_movement()
+            if s.test_on_base():
+                s.repair(1)  # repair hit points of 1
+            # reload all the cannons with 
+            for c_index in range(len(s.Cannons)):
+                s.load_cannon(c_index,0)  # right now shot index is set to 0
+                
         print(self.active_player)
     
     def set_projection(self,theta,phi):
@@ -126,6 +132,11 @@ class game:
                         print('Segment')
                         print(iseg)
                         self.bullets.remove(obj)
+                        self.hit_ship(obj.pos[0],obj.pos[1])
+                    if any([x.hp <=0 for x in s.Segments]):
+                        # remove the ship if a segment's hitpoints fall to zero
+                        self.remove_ship(s)
+                        
 #                        self.make_explosion(obj.pos[0],obj.pos[1])
             
             if obj.pos[2] < 0:
@@ -146,6 +157,23 @@ class game:
         self.splashes+=make_splash(x,y,self.splash_batch,self.objects_group,
                                     self.shadows_group,proj3D=self.proj3D,num=num)
             
+    def hit_ship(self,x,y,num=7):
+        """
+        create a "splash" of fire
+        """
+        self.splashes+=make_hit(x,y,self.splash_batch,self.objects_group,
+                                    self.shadows_group,proj3D=self.proj3D,num=num)
+    
+    def remove_ship(self,s):
+        """
+        Remove a ship from the game
+        """
+        s.sprite.visible = False
+        if s.player.active_ship == s:
+            s.player.active_ship = None
+        s.player.ships.remove(s)
+        self.ships.remove(s)
+        
 #    def change_stage(self,newstage):
 #        """
 #        stages:
@@ -189,6 +217,7 @@ class player:
         self.batch = pyglet.graphics.Batch()  # create a batch object for the player's objects
         self.name = name
         self.base_loc = list(base_loc) # vertex locations of the base
+        self.active_ship = None
         
     def add_ship(self,ship):
         # Add a ship object to the list of ships belonging to this player
@@ -200,6 +229,22 @@ class player:
     
     def __repr__(self):
         return self.name
+        
+    def cycle_ship(self):
+        """
+        activate the next ship in the player's set.  If no ships exist
+        keep the active ship as none
+        """
+        if self.active_ship is None:
+            # if no ship is active go to the first one (if the player has any)
+            if len(self.ships) > 0:
+                self.active_ship = self.ships[0]
+        else:
+            # activate the next ship in the list, cycling tot he beginning
+            # as necessary
+            ship_index = self.ships.index(self.active_ship)
+            ship_index = np.mod(ship_index,len(self.ships))
+            self.active_ship = self.ships[ship_index]
 
 
 #class fire:
@@ -243,13 +288,13 @@ class player:
 #        self.sprite.scale = 0.05
 #        self.visible = True
         
-    def update(self,dt):
-        if self.Terminate:
-            self.sprite = update
-        else:
-            self.pos += self.vel*dt
-            if self.pos[2] <= 0:
-                self.terminate = True
+#    def update(self,dt):
+#        if self.Terminate:
+#            self.sprite = update
+#        else:
+#            self.pos += self.vel*dt
+#            if self.pos[2] <= 0:
+#                self.terminate = True
         
 
 
@@ -328,6 +373,28 @@ def make_splash(x,y,splash_batch,objects,shadows,proj3D=None,num=10,del_obj_list
         splash_list+=[projectile(splash_pos,splash_vel,batch=splash_batch,
                     image='splash2.png',
                     shadow_image = 'splash2_shadow.png',
+                    objects_group=objects,
+                    shadows_group=shadows,proj=proj3D,del_obj=del_obj_list)]
+    return splash_list
+    
+    
+def make_hit(x,y,splash_batch,objects,shadows,proj3D=None,num=10,del_obj_list=None,create_obj_list=None):
+    """
+    Use the splash game objects to create the hit animation
+    """    
+    if proj3D is None:
+        proj3D = np.eye(3)
+        
+    splash_vel0 = 30
+    splash_velsig = 4
+    splash_pos = np.array([x,y,0])
+    splash_list = []
+    for ai in range(num):
+        splash_vel = ((np.random.randn()*splash_velsig+splash_vel0)*\
+                np.dot(matrix_rot3d(np.random.rand()*2*np.pi,np.random.randn()*np.pi/50),np.array([[0],[0],[1]]))).flatten()
+        splash_list+=[projectile(splash_pos,splash_vel,batch=splash_batch,
+                    image='fire2.png',
+                    shadow_image = 'fire2_shadow.png',
                     objects_group=objects,
                     shadows_group=shadows,proj=proj3D,del_obj=del_obj_list)]
     return splash_list

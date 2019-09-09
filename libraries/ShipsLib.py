@@ -63,14 +63,15 @@ class ship:
         
         self.move_dist = 0 #self.propel/self.mass
         
-        self.move_frac = 1.0  # fraction of movement available
-        
+        self.move_frac = 1.0  # fraction of movement available       
         
         self.theta = theta # the ship's orientation on the map
         
         self.sprite = None  # pyglet sprite for the ship
         
         self.player=player
+        
+        self.active_cannon = None  # pointer to the current active cannon TODO: Implement Cycle functionality
         
     def __repr__(self):
         retstr = 'ship class\n'
@@ -90,7 +91,7 @@ class ship:
     def add_to_board(self,batch=None):
 #        ship_image = pyglet.resource.image('ship1.png')
         
-        self.ship_image_R = pyglet.resource.image('ship1.png')
+        self.ship_image_R = pyglet.resource.image('ship2.png')
         self.ship_image_L = flip_image(self.ship_image_R,axis=1)
 #        self.ship_image_L = self.ship_image_R.get_region(0, 0, self.ship_image_R.width, self.ship_image_R.height) 
         
@@ -108,7 +109,7 @@ class ship:
 #                             batch=batch)
         self.opacity = 0
         self.sprite.rotation=self.theta
-        self.sprite.scale = 0.05
+#        self.sprite.scale = 0.05  # only use with ship1.png
     
     def push_segment(self,new_seg):
         # add a segment to the end of the ship
@@ -206,6 +207,12 @@ class ship:
                 n_move = n_move/np.sqrt(np.sum(n_move**2))*self.move_dist*self.move_frac
                 self.coords=n_move+self.coords
                 self.move_frac = 0.0  # all of the movement allocation for this turn is used up
+    def use_move_frac(self,fraction):
+        """
+        use a certain fraction of the movement due to another action
+        e.g. loading
+        """
+        self.move_frac=np.maximum(self.move_frac-fraction,0)
 
     def reset_movement(self):
         self.move_frac = 1.0
@@ -271,6 +278,40 @@ class ship:
                         if seg.z <= obj_new[1] and seg.z+seg.length >= obj_new[1]:
                             seg_index=iseg
         return hit_ship,seg_index
+        
+    def test_on_base(self):
+        """
+        check if the ship is on its base
+        """
+        if not self.player is None:
+            on_base = self.coords[0,0] >= np.minimum(self.player.base_loc[0][0],self.player.base_loc[2][0])
+            on_base = on_base and self.coords[0,0] <= np.maximum(self.player.base_loc[0][0],self.player.base_loc[2][0])
+            on_base = on_base and self.coords[1,0] >= np.minimum(self.player.base_loc[0][1],self.player.base_loc[2][1])
+            on_base = on_base and self.coords[1,0] <= np.maximum(self.player.base_loc[0][1],self.player.base_loc[2][1])
+        else:
+            on_base = False
+        
+        return on_base
+        
+    def repair(self,hp_count):
+        """
+        Add hp_count hit points back into the ship
+        adds the hit points one at a time to the segment
+        that most needs it
+        """
+        while hp_count > 0:
+            hpmin = 1000
+            seg_sel = None
+            for seg in self.Segments:
+                if seg.hp < hpmin and seg.hp != seg.hp_max:
+                    seg_sel = seg
+                    hpmin = seg.hp
+            if seg_sel is None:
+                break
+            else:
+                seg_sel.hp+=1
+                hp_count = hp_count - 1
+                    
         
 
 class cannon:
@@ -416,6 +457,7 @@ class segment:
         self.length = length  # length of segment
         self.mass = mass  # mass of the segment
         self.mast = mast  # mast's contribution to ship speed
+        self.hp_max = hp  # the maximum value of hitpoints for this segment
     def apply_damage(self,damage):
         self.hp-=damage
     def set_z(self,z):
