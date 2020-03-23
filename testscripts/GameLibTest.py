@@ -5,9 +5,21 @@ Created on Sat May  4 20:06:49 2019
 @author: hayman
 """
 
+import os
+import sys
+
 import pyglet
 from pyglet.window import mouse
 from pyglet.window import key
+
+# set path to megashipsuper libraries
+dirP_str = os.path.abspath(__file__+'/../../libraries')
+# dirP_str = os.path.abspath('../../libraries')
+if dirP_str not in sys.path:
+    sys.path.append(dirP_str)
+print()
+print(dirP_str)
+print()
 
 from ShipsLib import *
 from GameLib import *
@@ -21,7 +33,7 @@ g1.add_player()                 # create another player
 
 # give each player a ship with cannon and shot
 for player in g1.players:
-    g1.add_ship(player_sel=player)  # create a ship for the active player
+    g1.add_ship(player_sel=player,ship_len=20)  # create a ship for the active player
     player.ships[0].add_cannon(cannon())  # add a default cannon to the ship
     player.ships[0].add_shot(standard_shot())  # load default shot onto the ship
     player.ships[0].load_cannon(0,0)
@@ -120,11 +132,11 @@ def on_key_press(symbol, modifiers):
                     g1.active_player.active_ship.add_cannon(cannon())
                     g1.active_player.active_ship.use_move_frac(1.0)
                 else:
-                    print("Loading a connon requires the entire move")
+                    print("Loading a cannon requires the entire move")
             else:
                 print("A ship cannot hold more cannons than it has segments")
         else:
-            print("Ship is not currently on base")
+            print("Cannot load cannon on ship.  Ship is not currently on base")
             print(g1.active_player.active_ship.coords)
             print(g1.active_player.base_loc)
         
